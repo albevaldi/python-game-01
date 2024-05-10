@@ -11,11 +11,11 @@ pygame.display.set_caption("Hero Something")
 
 # sets frames
 clock = pygame.time.Clock()
-frames = 60
+frames = 55
 
 # game vars
 GRAVITY = 1
-SCROLL_TRESH = 200
+SCROLL_TRESH = 350
 scroll = 0
 bg_scroll = 0
 game_over = False
@@ -27,7 +27,9 @@ font_big = pygame.font.SysFont("Times New Roman", 36)
 
 # images
 background = pygame.image.load("./assets/bg_1.PNG").convert_alpha()
-hero_img = pygame.image.load("./assets/hero_idle_0.png").convert_alpha()
+#hero_img = pygame.image.load("./assets/hero_idle_0.png").convert_alpha()
+idle_images = [pygame.image.load(f"./assets/idle_{i}.png").convert_alpha() for i in range(10)]
+moving_images = [pygame.image.load(f"./assets/moving_{i}.png").convert_alpha() for i in range(10)]
 floors = pygame.image.load("./assets/floor_0.png").convert_alpha()
 
 def draw_bg(bg_scroll):
@@ -40,18 +42,31 @@ def draw_text(text, font, text_col, x, y):
 
 class Player():
     def __init__(self, x, y):
-        self.image = pygame.transform.scale(hero_img, (100, 100))
+        #self.image = pygame.transform.scale(hero_img, (100, 100))
+        self.idle_images = [pygame.transform.scale(img, (100, 100)) for img in idle_images]
+        self.moving_images = [pygame.transform.scale(img, (100, 100)) for img in moving_images]
         self.width = 60
         self.height = 70
         self.rect = pygame.Rect(0, 0, self.width, self.height)
         self.rect.center = (x, y)
         self.vel_y = 0
-        self.flip = False
+        self.flip = True
         self.jump_counter = 0 
+        self.animation_state = 'idle'
+        self.animation_index = 0 
+        self.image = self.idle_images[0]
+
+    def update_animation(self):
+        if self.animation_state == 'idle':
+            self.image = self.idle_images[self.animation_index]
+        elif self.animation_state == 'moving':
+            self.image = self.moving_images[self.animation_index]
+        self.animation_index = (self.animation_index + 1) % len(self.idle_images)
 
 
     def draw(self):
         screen.blit(pygame.transform.flip(self.image, self.flip, False), (self.rect.x - 12, self.rect.y - 20))
+        
 
     def jump(self):
         if self.jump_counter <= 2: 
@@ -66,13 +81,15 @@ class Player():
 
         # key presses
         key = pygame.key.get_pressed()
-    
+        
         if key[pygame.K_a]:
             dx -= 10
-            self.flip = True
+            self.flip = False
+            self.animation_state = 'moving'
         elif key[pygame.K_d]:
             dx += 10
-            self.flip = False
+            self.flip = True
+            self.animation_state = 'moving'
         if key[pygame.K_w]:
             self.jump()
 
@@ -92,8 +109,6 @@ class Player():
                     self.vel_y = 0
                     self.jump_counter = 0
                     break
-
-
 
         if self.rect.top <=SCROLL_TRESH:
             if self.vel_y < 0:
@@ -121,14 +136,31 @@ hero = Player(0, 570)
 
 
 # Put into levels later
-
 plat_group = pygame.sprite.Group()
-platform = Platform(0, 570, 250)
-plat_group.add(platform)
-platform = Platform(350, 405, 250)
-plat_group.add(platform)
-platform = Platform(400, 250, 250)
-plat_group.add(platform)
+
+def load_level_one():
+    plat_positions = [
+        (0, 570, 250),
+        (550, 405, 250),
+        (50, 200, 250),
+        (100, 200, 250),
+        (500, -5, 250),
+        (200, -205, 250),
+        (300, -405, 250),
+        (500, -605, 250),
+        (300, -805, 250),
+        (500, -1005, 250),
+        (300, -1105, 250)
+    ]
+
+    plat_group.empty()
+
+    for pos in plat_positions:
+        platform = Platform(*pos)
+        plat_group.add(platform)
+
+
+load_level_one()
 
 run = True
 while run:
@@ -146,8 +178,9 @@ while run:
 
         plat_group.draw(screen)
         hero.draw()
+        hero.update_animation()
 
-        if hero.rect.top > SCREEN_HEIGHT:
+        if hero.rect.bottom > SCREEN_HEIGHT:
             game_over = True
     else:
         draw_text("Game Over!", font_big, (255, 255, 255), 130, 200)
@@ -161,13 +194,7 @@ while run:
             scroll = 0
             hero.rect.center = (0, 570)
             # Will get changed to Level load one 
-            plat_group.empty() 
-            platform = Platform(0, 570, 250)
-            plat_group.add(platform)
-            platform = Platform(350, 405, 250)
-            plat_group.add(platform)
-            platform = Platform(400, 250, 250)
-            plat_group.add(platform)
+            load_level_one()
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
